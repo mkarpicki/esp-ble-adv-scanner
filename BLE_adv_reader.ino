@@ -121,33 +121,31 @@ void connectToBLE(BLEAdvertisedDevice* device) {
 
   BLEClient* pClient  = BLEDevice::createClient();
 
-  Serial.println("in");
-
   pClient->setClientCallbacks(new MyClientCallback());  
   pClient->connect(device);
- 
-  Serial.println("check");
-//
-//  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
-//  
-//  if (pRemoteService == nullptr) {
-//    pClient->disconnect();
-//    return;
-//  }
-//
-//  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-//
-//  if (pRemoteCharacteristic == nullptr) {
-//    pClient->disconnect();
-//    return;    
-//  }
-//
+
+  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
+  
+  if (pRemoteService == nullptr) {
+    pClient->disconnect();
+    return;
+  }
+
+  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+
+  if (pRemoteCharacteristic == nullptr) {
+    pClient->disconnect();
+    return;    
+  }
+
 //  if(pRemoteCharacteristic->canRead()) {
 //    std::string value = pRemoteCharacteristic->readValue();
 //    Serial.print("The characteristic value was: ");
 //    Serial.println(value.c_str());
-//  }  
-//
+//  }
+    
+  Serial.println("check4");
+
   pClient->disconnect();
 
 
