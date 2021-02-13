@@ -51,10 +51,10 @@ bool isMatchingDevice(BLEAdvertisedDevice advertisedDevice) {
 //  
 //}
 
-bool deviceAdded(BLEAdvertisedDevice device) {
+bool isDeviceAdded(BLEAdvertisedDevice* device) {
   for (int i = 0; i < numberOfDevices; i++){
     if (myDevices[i] != nullptr){
-      if (getAddress(*myDevices[i]) == getAddress(device)) {
+      if (getAddress(*myDevices[i]) == getAddress(*device)) {
         return true;
       }
     }
@@ -62,10 +62,10 @@ bool deviceAdded(BLEAdvertisedDevice device) {
   return false;
 }
 
-void addDevice(BLEAdvertisedDevice device) {
+void addDevice(BLEAdvertisedDevice* device) {
   for (int i = 0; i < numberOfDevices; i++){
     if (myDevices[i] == nullptr){
-      myDevices[i] = new BLEAdvertisedDevice(device);
+      myDevices[i] = new BLEAdvertisedDevice(*device);
       return;
     }
   }
@@ -165,8 +165,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       if (isMatchingDevice(advertisedDevice)) {
         Serial.printf("Advertised Device: %s \n", advertisedDevice.getName().c_str());
 
-        if (!deviceAdded(advertisedDevice)) {
-          addDevice(advertisedDevice);  
+        if (!isDeviceAdded(&advertisedDevice)) {
+          addDevice(&advertisedDevice);  
         }
         
         //if (!deviceFoundAlready(advertisedDevice)) {
