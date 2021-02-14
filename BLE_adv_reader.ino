@@ -50,15 +50,15 @@ bool isMatchingDevice(BLEAdvertisedDevice* device) {
 }
 
 bool isDeviceConnected(BLEAdvertisedDevice* device) {
-  return isAddressConnectedAlready(device->getAddress());  
+  return isAddressMarkAsConnected(device->getAddress());  
 }
 
-bool isAddressConnectedAlready(BLEAddress bleAddress) {
+bool isAddressMarkAsConnected(BLEAddress bleAddress) {
   String address = addressToStr(bleAddress);
   return (foundAddressesStr.indexOf(address) != -1);
 }
 
-void rememberAddress(BLEAddress bleAddress) {
+void addToConnectedAddresses(BLEAddress bleAddress) {
   String address = addressToStr(bleAddress);
 //  if(foundAddressesStr == "") {
 //    foundAddressesStr.concat(address);
@@ -67,6 +67,16 @@ void rememberAddress(BLEAddress bleAddress) {
 //  }
     foundAddressesStr.concat(",");
     foundAddressesStr.concat(address);  
+}
+
+void removeFromConnectedAddresses(BLEAddress bleAddress) {
+  String address = addressToStr(bleAddress);
+  foundAddressesStr.replace("," + address, "");
+}
+
+void printConnectedAddresses() {
+  Serial.print("foundAddressesStr: ");
+  Serial.println(foundAddressesStr);  
 }
 
 //static void notifyCallback(
@@ -84,14 +94,13 @@ void rememberAddress(BLEAddress bleAddress) {
 
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
-    Serial.println("onConnect");
-    Serial.println(addressToStr(pclient->getPeerAddress()));
-    rememberAddress(pclient->getPeerAddress());
+    //Serial.println("onConnect");
+    addToConnectedAddresses(pclient->getPeerAddress());
   }
 
   void onDisconnect(BLEClient* pclient) {
-    Serial.println("onDisconnect");
-    Serial.println(addressToStr(pclient->getPeerAddress()));
+    //Serial.println("onDisconnect");
+    removeFromConnectedAddresses(pclient->getPeerAddress());
   }
 };
 
@@ -127,15 +136,18 @@ void connectToBLE(BLEAdvertisedDevice* device) {
     return;    
   }
 
-//  if(pRemoteCharacteristic->canRead()) {
+  //Serial.println("Char:");
+  //Serial.println(pRemoteCharacteristic.toString());
+
+  if(pRemoteCharacteristic->canRead()) {
 //    std::string value = pRemoteCharacteristic->readValue();
 //    Serial.print("The characteristic value was: ");
 //    Serial.println(value.c_str());
-//  }
+  }
     
   Serial.println("connected");
 
-  pClient->disconnect();
+  //pClient->disconnect();
 
 
   
@@ -180,14 +192,11 @@ void loop() {
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
   Serial.print("Devices found: ");
   Serial.println(foundDevices.getCount());
-  Serial.println("Scan done!");
-
+  
   connectToDevices(foundDevices);
   
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
 
-  Serial.print("foundAddressesStr: ");
-  Serial.println(foundAddressesStr);
   delay(scanTime * 1000);
   
 }
