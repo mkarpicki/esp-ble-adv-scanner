@@ -40,16 +40,18 @@ String addressToStr(BLEAddress address) {
   return address.toString().c_str();
 }
 
-String getAddress(BLEAdvertisedDevice device) {
-  return addressToStr(device.getAddress());
+String getAddress(BLEAdvertisedDevice* device) {
+  return addressToStr(device->getAddress());
 }
 
-bool isMatchingDevice(BLEAdvertisedDevice advertisedDevice) {
-  String deviceName = advertisedDevice.getName().c_str();
+bool isMatchingDevice(BLEAdvertisedDevice* device) {
+  String deviceName = device->getName().c_str();
   return (deviceName.indexOf(namePattern) == 0);    
 }
 
-
+bool isDeviceConnected(BLEAdvertisedDevice* device) {
+  return isAddressConnectedAlready(device->getAddress());  
+}
 
 bool isAddressConnectedAlready(BLEAddress bleAddress) {
   String address = addressToStr(bleAddress);
@@ -66,37 +68,6 @@ void rememberAddress(BLEAddress bleAddress) {
     foundAddressesStr.concat(",");
     foundAddressesStr.concat(address);  
 }
-
-//bool isDeviceAdded(BLEAdvertisedDevice* device) {
-//  for (int i = 0; i < numberOfDevices; i++){
-//    if (myDevices[i] != nullptr){
-//      if (getAddress(*myDevices[i]) == getAddress(*device)) {
-//        return true;
-//      }
-//    }
-//  }
-//  return false;
-//}
-//
-//void addDevice(BLEAdvertisedDevice* device) {
-//  for (int i = 0; i < numberOfDevices; i++){
-//    if (myDevices[i] == nullptr){
-//      myDevices[i] = new BLEAdvertisedDevice(*device);
-//      return;
-//    }
-//  }
-//}
-//
-//
-//void removeDevice(BLEAdvertisedDevice* device) {
-//  for (int i = 0; i < numberOfDevices; i++){
-//    if (myDevices[i] != nullptr){
-//      if (getAddress(*myDevices[i]) == getAddress(*device)) {
-//        myDevices[i] = nullptr;
-//      }
-//    }
-//  }
-//}
 
 //static void notifyCallback(
 //  BLERemoteCharacteristic* pBLERemoteCharacteristic,
@@ -133,6 +104,9 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 
 void connectToBLE(BLEAdvertisedDevice* device) {
+
+  Serial.print("connecting to: ");
+  Serial.println(getAddress(device));
 
   BLEClient* pClient  = BLEDevice::createClient();
 
@@ -178,14 +152,11 @@ void connectToDevices(BLEScanResults foundDevices) {
   for (int i = 0; i < foundDevicesCount; i++){
     device = foundDevices.getDevice(i);
 
-    if(isMatchingDevice(device)) {
-      if (!isAddressConnectedAlready(device.getAddress())) {
-        connectToBLE(&device);
-        delay(1000);        
-      } else {
-        Serial.println("this device was conneted already!");
+    if(isMatchingDevice(&device)) {      
+      if (!isDeviceConnected(&device)) {
+        delay(1000); //give BT time to switch context  
+        connectToBLE(&device);              
       }
-
     }
   }
 }
