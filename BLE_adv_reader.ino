@@ -10,24 +10,38 @@
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
 
+static BLERemoteCharacteristic* pRemoteCharacteristic;
+BLEScan* pBLEScan;
+
+/**
+ * Static serviceId and characteristicsId used by all advertising devices
+ * @todo: think if may need to use many services or at least characterisitcs in long term (per device type maybe)
+ */
 static BLEUUID serviceUUID("9d319c9c-3abb-4b58-b99d-23c9b1b69ebc");
 static BLEUUID charUUID("a869a793-4b6e-4334-b1e3-eb0b74526c14");
 
+/**
+ * Varialbe keeps known name prefix of supported adv devices
+ * @todo: Think if get read of this logic in long term and filter by serviceId's but that will require connect to all found first 
+ */
+static String namePattern = "ESP32_";
 
-String namePattern = "ESP32_";
-//String foundAddressesStr = "";
-
-static BLERemoteCharacteristic* pRemoteCharacteristic;
- 
-BLEScan* pBLEScan;
-
-//temp
+/**
+ * Predefined size of array of expected advertizing devices to support
+ * @todo: consider using dynamic list in future
+ */
 const int numberOfDevices = 20;
-BLEAdvertisedDevice* myDevices[numberOfDevices];
-BLEAdvertisedDevice* myConnectedDevices[numberOfDevices];
+String connectedAddresses[numberOfDevices];
+//BLEAdvertisedDevice* myDevices[numberOfDevices];
+
+String foundAddressesStr = "";
+
+String addressToStr(BLEAddress address) {
+  return address.toString().c_str();
+}
 
 String getAddress(BLEAdvertisedDevice device) {
-  return device.getAddress().toString().c_str();
+  return addressToStr(device.getAddress());
 }
 
 bool isMatchingDevice(BLEAdvertisedDevice advertisedDevice) {
@@ -35,62 +49,54 @@ bool isMatchingDevice(BLEAdvertisedDevice advertisedDevice) {
   return (deviceName.indexOf(namePattern) == 0);    
 }
 
-//bool deviceFoundAlready(BLEAdvertisedDevice device) {
-//  String address = getAddress(device);
-//  return (foundAddressesStr.indexOf(address) != -1);
-//}
-//
-//void rememberAddress(BLEAdvertisedDevice device) {
-//  String address = getAddress(device);
+
+
+bool isAddressConnectedAlready(BLEAddress bleAddress) {
+  String address = addressToStr(bleAddress);
+  return (foundAddressesStr.indexOf(address) != -1);
+}
+
+void rememberAddress(BLEAddress bleAddress) {
+  String address = addressToStr(bleAddress);
 //  if(foundAddressesStr == "") {
 //    foundAddressesStr.concat(address);
 //  } else {
-//    foundAddressesStr.concat(",");
-//    foundAddressesStr.concat(address);
+//
 //  }
-//  
-//}
-
-bool isDeviceAdded(BLEAdvertisedDevice* device) {
-  for (int i = 0; i < numberOfDevices; i++){
-    if (myDevices[i] != nullptr){
-      if (getAddress(*myDevices[i]) == getAddress(*device)) {
-        return true;
-      }
-    }
-  }
-  return false;
+    foundAddressesStr.concat(",");
+    foundAddressesStr.concat(address);  
 }
 
-void addDevice(BLEAdvertisedDevice* device) {
-  for (int i = 0; i < numberOfDevices; i++){
-    if (myDevices[i] == nullptr){
-      myDevices[i] = new BLEAdvertisedDevice(*device);
-      return;
-    }
-  }
-}
-
-//void addDeviceAsConnected(BLEAdvertisedDevice* device) {
+//bool isDeviceAdded(BLEAdvertisedDevice* device) {
 //  for (int i = 0; i < numberOfDevices; i++){
-//    if (myConnectedDevices[i] == nullptr){
-//      myConnectedDevices[i] = device;
+//    if (myDevices[i] != nullptr){
+//      if (getAddress(*myDevices[i]) == getAddress(*device)) {
+//        return true;
+//      }
+//    }
+//  }
+//  return false;
+//}
+//
+//void addDevice(BLEAdvertisedDevice* device) {
+//  for (int i = 0; i < numberOfDevices; i++){
+//    if (myDevices[i] == nullptr){
+//      myDevices[i] = new BLEAdvertisedDevice(*device);
 //      return;
 //    }
 //  }
 //}
-
-
-void connectToDevices() {
-  for (int i = 0; i < numberOfDevices; i++){
-    if (myDevices[i] != nullptr){
-      //Serial.println(getAddress(*myDevices[i]));
-      connectToBLE(myDevices[i]);
-      delay(1000);
-    }
-  }
-}
-
+//
+//
+//void removeDevice(BLEAdvertisedDevice* device) {
+//  for (int i = 0; i < numberOfDevices; i++){
+//    if (myDevices[i] != nullptr){
+//      if (getAddress(*myDevices[i]) == getAddress(*device)) {
+//        myDevices[i] = nullptr;
+//      }
+//    }
+//  }
+//}
 
 //static void notifyCallback(
 //  BLERemoteCharacteristic* pBLERemoteCharacteristic,
@@ -108,14 +114,23 @@ void connectToDevices() {
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
     Serial.println("onConnect");
-    
+    Serial.println(addressToStr(pclient->getPeerAddress()));
+    rememberAddress(pclient->getPeerAddress());
   }
 
   void onDisconnect(BLEClient* pclient) {
     Serial.println("onDisconnect");
-    Serial.println(pclient->getPeerAddress().toString().c_str());
+    Serial.println(addressToStr(pclient->getPeerAddress()));
   }
 };
+
+class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+    void onResult(BLEAdvertisedDevice advertisedDevice) {
+      //Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
+      //Serial.printf("Advertised Device: %s \n", advertisedDevice.getName().c_str());
+    }
+};
+
 
 void connectToBLE(BLEAdvertisedDevice* device) {
 
@@ -144,7 +159,7 @@ void connectToBLE(BLEAdvertisedDevice* device) {
 //    Serial.println(value.c_str());
 //  }
     
-  Serial.println("check4");
+  Serial.println("connected");
 
   pClient->disconnect();
 
@@ -156,30 +171,28 @@ void connectToBLE(BLEAdvertisedDevice* device) {
   
 }
 
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
-    void onResult(BLEAdvertisedDevice advertisedDevice) {
-      //Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
+void connectToDevices(BLEScanResults foundDevices) {
+  int foundDevicesCount = foundDevices.getCount();
+  BLEAdvertisedDevice device;
+  
+  for (int i = 0; i < foundDevicesCount; i++){
+    device = foundDevices.getDevice(i);
 
-      if (isMatchingDevice(advertisedDevice)) {
-        Serial.printf("Advertised Device: %s \n", advertisedDevice.getName().c_str());
-
-        if (!isDeviceAdded(&advertisedDevice)) {
-          addDevice(&advertisedDevice);  
-        }
-        
-        //if (!deviceFoundAlready(advertisedDevice)) {
-        //  rememberAddress(advertisedDevice);          
-          //connectToBLE(advertisedDevice);
-        //} 
-        //connectToBLE(advertisedDevice);
+    if(isMatchingDevice(device)) {
+      if (!isAddressConnectedAlready(device.getAddress())) {
+        connectToBLE(&device);
+        delay(1000);        
+      } else {
+        Serial.println("this device was conneted already!");
       }
-    }
-};
 
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Scanning...");
+  Serial.println("Starting...");
 
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -191,15 +204,19 @@ void setup() {
 
 void loop() {
   int scanTime = 5; //In seconds
-  // put your main code here, to run repeatedly:
+  
+  Serial.println("Scanning...");
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
   Serial.print("Devices found: ");
   Serial.println(foundDevices.getCount());
   Serial.println("Scan done!");
+
+  connectToDevices(foundDevices);
+  
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
 
-  //Serial.println(foundAddressesStr);
+  Serial.print("foundAddressesStr: ");
+  Serial.println(foundAddressesStr);
   delay(scanTime * 1000);
-  connectToDevices();
   
 }
