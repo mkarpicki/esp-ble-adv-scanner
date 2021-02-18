@@ -1,6 +1,17 @@
 /*
    Based on Neil Kolban example for IDF: https://github.com/nkolban/esp32-snippets/blob/master/cpp_utils/tests/BLE%20Tests/SampleScan.cpp
    Ported to Arduino ESP32 by Evandro Copercini
+
+   @readme
+   required 2 corrections in BLE libitself
+
+   BLERemoteCharacteristics.h
+   * made definition BLERemoteService* getRemoteService(); public
+ 
+   BLERemoteCharacteristics.cpp
+   * in readValue() called  m_semaphoreReadCharEvt.give(); before m_semaphoreReadCharEvt.wait("readValue");
+   * ( https://esp32.com/viewtopic.php?t=4181 )
+   
 */
 
 //00:12:56.513 -> Advertised Device: Name: ESP32_2, Address: 24:0a:c4:32:36:2e, txPower: 3 
@@ -25,14 +36,6 @@ static BLEUUID charUUID("a869a793-4b6e-4334-b1e3-eb0b74526c14");
  * @todo: Think if get read of this logic in long term and filter by serviceId's but that will require connect to all found first 
  */
 static String namePattern = "ESP32_";
-
-/**
- * Predefined size of array of expected advertizing devices to support
- * @todo: consider using dynamic list in future
- */
-const int numberOfDevices = 20;
-String connectedAddresses[numberOfDevices];
-//BLEAdvertisedDevice* myDevices[numberOfDevices];
 
 String foundAddressesStr = "";
 
@@ -85,11 +88,22 @@ static void notifyCallback(
   size_t length,
   bool isNotify) {
     Serial.print("Notify callback for characteristic ");
-    Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    Serial.print(" of data length ");
-    Serial.println(length);
+    Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    //Serial.print(" of data length ");
+    //Serial.println(length);
     Serial.print("data: ");
     Serial.println((char*)pData);
+    
+    Serial.println(pBLERemoteCharacteristic->readUInt32());
+    //std::string strValue = pBLERemoteCharacteristic->readValue();
+    //Serial.println(strValue.c_str());
+
+    BLERemoteService* remoteService = pBLERemoteCharacteristic->getRemoteService();
+    BLEClient* pClient = remoteService->getClient();
+    String address = addressToStr(pClient->getPeerAddress());
+    
+    Serial.print("from address: ");
+    Serial.println(address);
 }
 
 class MyClientCallback : public BLEClientCallbacks {
@@ -181,6 +195,7 @@ void setup() {
 
 void loop() {
   int scanTime = 5; //In seconds
+  int cycleTimeMs = 1000 * 60;
   
   Serial.println("Scanning...");
   BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
@@ -191,6 +206,6 @@ void loop() {
   
   pBLEScan->clearResults();   // delete results fromBLEScan buffer to release memory
 
-  delay(scanTime * 1000);
+  delay(cycleTimeMs);
   
 }
