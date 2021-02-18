@@ -91,8 +91,8 @@ static void notifyCallback(
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     //Serial.print(" of data length ");
     //Serial.println(length);
-    Serial.print("data: ");
-    Serial.println((char*)pData);
+    //Serial.print("data: ");
+    //Serial.println((char*)pData);
     
     Serial.println(pBLERemoteCharacteristic->readUInt32());
     //std::string strValue = pBLERemoteCharacteristic->readValue();
